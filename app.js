@@ -2,12 +2,17 @@
   const defaultTiles = [
     ['Amphora White','AMW'],['Alaska White','ALW'],['Antaliya Beige','AB'],['Breccia Natural','BRN'],['Colonial Black','COB'],['Fragment White','FW'],['Fossil Black','FOB'],['Golden Statuario','GLDST'],['Omani Grey','OMG'],['Portoro Black','PRTB'],['Simless White','SW'],['Versace Aloud','VA'],['Vibranium Brown','VRB'],['Volga Blue','VOB']
   ];
-  const defaultTypes = [['Coffee Table','CFT'],['Dining Table',''],['Side Table',''],['Study Table',''],['Metal Bed','']];
+  const defaultTypes = [['Coffee Table','MCFT'],['Dining Table','MDINE'],['Side Table','MST'],['Study Table','ST'],['Metal Bed','MTB']];
   const headings = ['Product type','Revenue Segment','Parent SKU Code','Parent Product Name','Characters Length (40 Characters)','Child SKU Code','Child Description','Characters Length (40 Characters)','Packing Dimensions (MM) (LXWXH)','Product Dimensions (MM) (LXWXH)','Gross Weight (KG)','Net Weight (KG)','SAP Code Parent','SAP Code Child','Plant','Conversion Factor'];
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const load = (key, fallback) => { try { const v=JSON.parse(localStorage.getItem(key)); return Array.isArray(v) && v.length ? v : fallback.map(x=>[...x]); } catch { return fallback.map(x=>[...x]); } };
   let tiles = load('metalBom.tiles', defaultTiles), types = load('metalBom.types', defaultTypes);
+  const legacyTypeDefaults = [['Coffee Table','CFT'],['Dining Table',''],['Side Table',''],['Study Table',''],['Metal Bed','']];
+  for (const [name, oldCode] of legacyTypeDefaults) {
+    const row = types.find(x => x[0] === name), currentDefault = defaultTypes.find(x => x[0] === name)?.[1];
+    if (row && row[1] === oldCode) row[1] = currentDefault;
+  }
   const sizeOptions=[['Big','Big'],['Small','Small'],['Combo','Combo'],['None','No size (blank)']];
   let savedSizeTiles={};try{savedSizeTiles=JSON.parse(localStorage.getItem('metalBom.sizeTiles')||'{}')||{};}catch{}
   const legacySizes=load('metalBom.selectedSizes', []).flat().filter(size=>sizeOptions.some(x=>x[0]===size));
@@ -129,3 +134,4 @@
   $('copy').addEventListener('click',async()=>{if(!makeRows().length){$('status').textContent='Complete the required product setup before copying.';return;}try{await navigator.clipboard.writeText(csvText());$('status').textContent='CSV copied to clipboard.';}catch{$('status').textContent='Clipboard access is unavailable. Use Download CSV.';}});
   ['modelName','productType','childCount','plant','revenueSegment'].forEach(id=>$(id).addEventListener('change',render));
 })();
+

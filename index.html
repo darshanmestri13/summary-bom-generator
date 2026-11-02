@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Summary BOM Generator</title>
+  <style>
+    :root{--ink:#17283b;--muted:#617286;--navy:#173b5e;--blue:#286c9b;--line:#dce4eb;--paper:#fff;--wash:#f3f6f9;--input:#fff4d6;--green:#176b52;--shadow:0 12px 30px rgba(28,53,78,.08)}
+    *{box-sizing:border-box}body{margin:0;background:var(--wash);color:var(--ink);font:15px/1.45 Inter,"Segoe UI",Arial,sans-serif}
+    header{background:linear-gradient(115deg,#173b5e,#245d83);color:white;padding:32px max(24px,calc((100vw - 1320px)/2));}
+    header h1{margin:0;font-size:27px;letter-spacing:-.3px}header p{margin:7px 0 0;color:#d5e4ef;max-width:720px}
+    main{max-width:1320px;margin:24px auto 60px;padding:0 20px}.layout{display:grid;grid-template-columns:minmax(320px,.88fr) minmax(0,1.55fr);gap:20px;align-items:start}
+    .stack{display:grid;gap:18px;min-width:0}.layout>.stack{min-width:0}.card{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:20px}
+    h2{font-size:17px;margin:0 0 15px;color:#1a3e60}h3{font-size:14px;margin:0 0 10px;color:#1a3e60}.sub{font-size:12px;color:var(--muted);margin:-8px 0 14px}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field.wide{grid-column:1/-1}label{font-size:12px;font-weight:650;color:#52657a}
+    input,select{font:inherit;color:var(--ink);border:1px solid #cbd6e1;border-radius:7px;padding:9px 10px;background:var(--input);min-width:0;width:100%;outline:none}input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #286c9b22}
+    input[type=number]{text-align:right}.locked{background:#eef2f5;color:#43566a}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;font-size:12px}th{background:#244b6d;color:#fff;text-align:left;font-weight:650;white-space:nowrap;padding:10px 9px}#outputHead th{background:#ffd966;color:#493900;font-weight:750}td{border-top:1px solid var(--line);padding:7px 8px;vertical-align:middle}td input,td select{font-size:12px;padding:7px 8px}td.num{text-align:right;font-variant-numeric:tabular-nums}
+    .children{min-width:720px}.catalog{min-width:360px}.output{min-width:1500px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head h2{margin:0}
+    button{font:inherit;cursor:pointer;border:0;border-radius:7px;padding:9px 12px;font-weight:650}.primary{background:var(--blue);color:white}.primary:hover{background:#1e577f}.secondary{background:#eaf1f6;color:#214a6b}.remove{background:transparent;color:#a33e3e;padding:5px 8px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.hint{font-size:12px;color:var(--muted);margin:11px 0 0}.status{font-size:13px;color:var(--green);min-height:20px;margin-top:8px}.summary-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:12px}.summary-head h2{margin:0}.count{color:var(--muted);font-size:12px;white-space:nowrap}.empty{padding:28px;text-align:center;color:var(--muted);background:#f8fafc;border-top:1px solid var(--line)}
+    .tools{display:grid;gap:18px}.note{padding:11px 12px;border-radius:8px;background:#edf4f8;color:#466276;font-size:12px;margin-top:14px}.selector{position:sticky;top:16px;z-index:1}.size-groups{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#f8fafc}.size-group+.size-group{border-top:1px solid var(--line)}.size-group-head{display:flex;align-items:center;gap:9px;padding:9px 10px;cursor:pointer;background:#eef3f7}.size-group-head input{width:auto;margin:0;accent-color:var(--blue)}.size-group-head .count{margin-left:auto}.size-tile-list{max-height:155px;overflow:auto;padding:3px 10px;background:#fff}.tile-option{display:flex;align-items:center;gap:9px;padding:6px 2px;border-bottom:1px solid #edf1f5;font-size:13px}.tile-option:last-child{border-bottom:0}.tile-option input{width:auto;margin:0;accent-color:var(--blue)}.selection-count{font-size:11px;color:var(--muted);margin:6px 0 0}.group-gap td{height:12px;padding:0;border:0;background:#fff}
+    @media(max-width:1050px){.layout{grid-template-columns:1fr}.selector{position:static}header{padding:26px 22px}}
+    @media(max-width:500px){main{padding:0 12px;margin-top:14px}.card{padding:15px}.fields{grid-template-columns:1fr}.field.wide{grid-column:auto}}
+  </style>
+</head>
+<body>
+<header><h1>Summary BOM Generator</h1></header>
+<main>
+  <div class="layout">
+    <div class="stack">
+      <section class="card selector">
+        <h2>Select product</h2>
+        <div class="fields">
+          <div class="field wide"><label for="modelName">Model Name (also used as Model Code)</label><input id="modelName" placeholder="e.g. Frovi"></div>
+          <div class="field"><label for="productType">Product Type</label><select id="productType"></select></div>
+          <div class="field wide"><label>Choose sizes and their tile variants</label><div id="sizeGroups" class="size-groups"></div><div id="variantSelectionCount" class="selection-count"></div></div>
+          <div class="field"><label for="childCount">Child Count</label><input id="childCount" type="number" min="1" max="30" value="2"></div>
+          <div class="field"><label for="plant">Plant</label><input id="plant" value="MKA7" placeholder="MKA7"></div>
+          <div class="field"><label for="revenueSegment">Revenue Segment</label><input id="revenueSegment" placeholder="Default: Fabrication (MKA7)"></div>
+          <div class="field wide"><label>Parent SKU prefix</label><input class="locked" value="W (Wakefit)" readonly></div>
+        </div>
+      </section>
+    </div>
+    <div class="stack">
+      <section class="card">
+        <div class="section-head"><h2>Enter Details</h2><button class="secondary" id="addChild">+ Add child box</button></div>
+        <p class="sub">These editable fields update the BOM Summary live. Enter dimensions and weights once per child number; they repeat for each selected size and its tile variants.</p>
+        <div class="table-wrap"><table class="children"><thead><tr><th>Box #</th><th>Component</th><th>Column I: Packing Dimensions (MM) (LXWXH)</th><th>Column J: Product Dimensions (MM) (LXWXH)</th><th>Column K: Gross Weight (KG)</th><th>Column L: Net Weight (KG)</th></tr></thead><tbody id="childRows"></tbody></table></div>
+        <p class="hint">Tile components use the selected tile short form and end in T. Frame components omit the tile short form and end in F.</p>
+      </section>
+      <section class="card">
+        <div class="summary-head"><h2>BOM Summary</h2><span class="count" id="rowCount">0 rows</span></div>
+        <div class="table-wrap"><table class="output"><thead><tr id="outputHead"></tr></thead><tbody id="outputRows"></tbody></table></div>
+        <div class="actions"><button class="primary" id="download">Download Excel</button><button class="secondary" id="copy">Copy CSV</button></div>
+        <div class="status" id="status" aria-live="polite"></div>
+      </section>
+      <section class="card tools">
+        <div>
+          <div class="section-head"><h2>Tile list</h2><button class="secondary" id="addTile">+ Add tile</button></div>
+          <p class="sub">Edit a tile name or short form directly. New tiles appear in the product selector.</p>
+          <div class="table-wrap"><table class="catalog"><thead><tr><th>Tile Name</th><th>Short Form</th><th></th></tr></thead><tbody id="tileRows"></tbody></table></div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Product type codes</h2><button class="secondary" id="addType">+ Add type</button></div>
+          <p class="sub">Coffee Table is set to CFT from the example. Add confirmed codes for the other types.</p>
+          <div class="table-wrap"><table class="catalog"><thead><tr><th>Product Type</th><th>Product Code</th><th></th></tr></thead><tbody id="typeRows"></tbody></table></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="app.js" defer></script>
+</body>
+</html>
+

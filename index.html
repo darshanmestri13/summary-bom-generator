@@ -18,6 +18,7 @@
     .children{min-width:720px}.catalog{min-width:360px}.output{min-width:1500px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head h2{margin:0}
     button{font:inherit;cursor:pointer;border:0;border-radius:7px;padding:9px 12px;font-weight:650}.primary{background:var(--blue);color:white}.primary:hover{background:#1e577f}.secondary{background:#eaf1f6;color:#214a6b}.remove{background:transparent;color:#a33e3e;padding:5px 8px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.hint{font-size:12px;color:var(--muted);margin:11px 0 0}.status{font-size:13px;color:var(--green);min-height:20px;margin-top:8px}.summary-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:12px}.summary-head h2{margin:0}.count{color:var(--muted);font-size:12px;white-space:nowrap}.empty{padding:28px;text-align:center;color:var(--muted);background:#f8fafc;border-top:1px solid var(--line)}
     .tools{display:grid;gap:18px}.note{padding:11px 12px;border-radius:8px;background:#edf4f8;color:#466276;font-size:12px;margin-top:14px}.selector{position:sticky;top:16px;z-index:1}.size-groups{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#f8fafc}.size-group+.size-group{border-top:1px solid var(--line)}.size-group-head{display:flex;align-items:center;gap:9px;padding:9px 10px;cursor:pointer;background:#eef3f7}.size-group-head input{width:auto;margin:0;accent-color:var(--blue)}.size-group-head .count{margin-left:auto}.size-tile-list{max-height:155px;overflow:auto;padding:3px 10px;background:#fff}.tile-option{display:flex;align-items:center;gap:9px;padding:6px 2px;border-bottom:1px solid #edf1f5;font-size:13px}.tile-option:last-child{border-bottom:0}.tile-option input{width:auto;margin:0;accent-color:var(--blue)}.selection-count{font-size:11px;color:var(--muted);margin:6px 0 0}.group-gap td{height:12px;padding:0;border:0;background:#fff}
+    .size-details{display:grid;gap:14px}.size-details-card{border:1px solid var(--line);border-radius:9px;padding:14px;background:#fbfcfd;min-width:0}.size-details-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.size-details-head h3{margin:0}.size-details-head .field{width:150px}.children{min-width:900px}
     @media(max-width:1050px){.layout{grid-template-columns:1fr}.selector{position:static}header{padding:26px 22px}}
     @media(max-width:500px){main{padding:0 12px;margin-top:14px}.card{padding:15px}.fields{grid-template-columns:1fr}.field.wide{grid-column:auto}}
   </style>
@@ -33,7 +34,7 @@
           <div class="field wide"><label for="modelName">Model Name (also used as Model Code)</label><input id="modelName" placeholder="e.g. Frovi"></div>
           <div class="field"><label for="productType">Product Type</label><select id="productType"></select></div>
           <div class="field wide"><label>Choose sizes and their tile variants</label><div id="sizeGroups" class="size-groups"></div><div id="variantSelectionCount" class="selection-count"></div></div>
-          <div class="field"><label for="childCount">Child Count</label><input id="childCount" type="number" min="1" max="30" value="2"></div>
+          <div class="field"><label for="childCount">Default child count per size</label><input id="childCount" type="number" min="1" max="30" value="2"></div>
           <div class="field"><label for="plant">Plant</label><input id="plant" value="MKA7" placeholder="MKA7"></div>
           <div class="field"><label for="revenueSegment">Revenue Segment</label><input id="revenueSegment" placeholder="Default: Fabrication (MKA7)"></div>
           <div class="field wide"><label>Parent SKU prefix</label><input class="locked" value="W (Wakefit)" readonly></div>
@@ -42,9 +43,9 @@
     </div>
     <div class="stack">
       <section class="card">
-        <div class="section-head"><h2>Enter Details</h2><button class="secondary" id="addChild">+ Add child box</button></div>
-        <p class="sub">These editable fields update the BOM Summary live. Enter dimensions and weights once per child number; they repeat for each selected size and its tile variants.</p>
-        <div class="table-wrap"><table class="children"><thead><tr><th>Box #</th><th>Component</th><th>Column I: Packing Dimensions (MM) (LXWXH)</th><th>Column J: Product Dimensions (MM) (LXWXH)</th><th>Column K: Gross Weight (KG)</th><th>Column L: Net Weight (KG)</th><th>Column N: SAP Code Child</th></tr></thead><tbody id="childRows"></tbody></table></div>
+        <div class="section-head"><h2>Enter Details</h2></div>
+        <p class="sub">Each selected size has its own child details. Tile variants within a size share that size’s box dimensions and weights.</p>
+        <div id="childDetails" class="size-details"><p class="empty">Select one or more sizes to enter their child details.</p></div>
         <p class="hint">Tile components use the selected tile short form and end in T. Frame components omit the tile short form and end in F.</p>
       </section>
       <section class="card">
@@ -68,7 +69,7 @@
     </div>
   </div>
 </main>
-<script src="app.js?v=20261103-summary-fix" defer></script>
+<script src="app.js?v=20261103-details-per-size" defer></script>
 </body>
 </html>
 

@@ -90,17 +90,18 @@
         const childDesc=`${model}${sizeLabel?` ${sizeLabel}`:''} ${type}-${isTile?normalize(tCode)+'-':''}B-${i+1}-${n}-${suffix}`;
         return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0],detail.productDimensions||'',ins[1],ins[2],'',ins[3],plant,(1/n).toFixed(2)];
       });
-      group.forEach(row=>row._size=size);
-      if(variantIndex<variants.length-1){const gap=Array(16).fill('');gap._size=size;return [...group,gap];}
+      group.forEach(row=>row._parentGroup=variantIndex);
+      if(variantIndex<variants.length-1){const gap=Array(16).fill('');return [...group,gap];}
       return group;
     });
   }
-  function getSizeSpans(rows) {
+  function getParentSpans(rows) {
     const spans=[];
     rows.forEach((row,index)=>{
-      const size=row._size??'';
+      if(row._parentGroup===undefined)return;
+      const parentGroup=row._parentGroup;
       const last=spans[spans.length-1];
-      if(!last||last.size!==size)spans.push({size,start:index,end:index});
+      if(!last||last.parentGroup!==parentGroup||last.end!==index-1)spans.push({parentGroup,start:index,end:index});
       else last.end=index;
     });
     return spans;
@@ -109,11 +110,11 @@
     saveChildDetails();
     const rows=makeRows(), dataRows=rows.filter(row=>row.some(value=>value!=='')); $('rowCount').textContent=`${dataRows.length} ${dataRows.length===1?'row':'rows'}`;
     if(!rows.length){$('outputRows').innerHTML=`<tr><td class="empty" colspan="16">Enter a model name and product type, then choose each size and its tile variants in the left panel.</td></tr>`;return;}
-    const spans=getSizeSpans(rows), spanAt=index=>spans.find(span=>span.start===index), containing=index=>spans.find(span=>span.start<=index&&span.end>=index);
+    const spans=getParentSpans(rows), spanAt=index=>spans.find(span=>span.start===index), containing=index=>spans.find(span=>span.start<=index&&span.end>=index);
     $('outputRows').innerHTML=rows.map((row,index)=>{
       const start=spanAt(index), span=containing(index), mergedColumn=9;
       const cells=row.map((value,col)=>{
-        if(col===mergedColumn){if(!start)return '';return `<td rowspan="${span.end-span.start+1}">${esc(value)}</td>`;}
+        if(col===mergedColumn&&row._parentGroup!==undefined){if(!start)return '';return `<td rowspan="${span.end-span.start+1}">${esc(value)}</td>`;}
         return `<td>${esc(value)}</td>`;
       }).join('');
       return `<tr${row.every(value=>value==='')?' class="group-gap"':''}>${cells}</tr>`;
@@ -127,7 +128,7 @@
     const cols=widths.map((width,i)=>`<col min="${i+1}" max="${i+1}" width="${width}" customWidth="1"/>`).join('');
     const rows=[headings,...makeRows()];
     const mergedJRows=new Set(),mergeRanges=[];
-    for(const span of getSizeSpans(rows.slice(1))){
+    for(const span of getParentSpans(rows.slice(1))){
       const first=span.start+2,last=span.end+2;
       if(last>first){mergeRanges.push(`<mergeCell ref="J${first}:J${last}"/>`);for(let row=first+1;row<=last;row++)mergedJRows.add(row);}
     }

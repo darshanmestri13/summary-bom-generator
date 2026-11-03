@@ -16,9 +16,13 @@
   const sizeOptions=[['Big','Big'],['Small','Small'],['Combo','Combo'],['None','No size (blank)']];
   let savedSizeTiles={};try{savedSizeTiles=JSON.parse(localStorage.getItem('metalBom.sizeTiles')||'{}')||{};}catch{}
   const legacySizes=load('metalBom.selectedSizes', []).flat().filter(size=>sizeOptions.some(x=>x[0]===size));
-  const legacyTiles=load('metalBom.selectedTiles', []).flat().filter(name=>tiles.some(t=>t[0]===name));
   let selectedSizes=new Set((savedSizeTiles.sizes||legacySizes).filter(size=>sizeOptions.some(x=>x[0]===size)));
-  let tilesBySize=new Map(sizeOptions.map(([size])=>[size,new Set((savedSizeTiles.tiles?.[size]|| (legacySizes.includes(size)?legacyTiles:[])).filter(name=>tiles.some(t=>t[0]===name)))]));
+  let tilesBySize=new Map(sizeOptions.map(([size])=>[size,new Set((savedSizeTiles.tiles?.[size]||[]).filter(name=>tiles.some(t=>t[0]===name)))]));
+  const tileDefaultResetKey='metalBom.tileDefaultReset.v1';
+  if(!localStorage.getItem(tileDefaultResetKey)){
+    for(const [,names] of tilesBySize) names.clear();
+    localStorage.setItem(tileDefaultResetKey,'1');
+  }
   const sizeDetails=new Map();
   const persist = () => { localStorage.setItem('metalBom.tiles',JSON.stringify(tiles));localStorage.setItem('metalBom.types',JSON.stringify(types));localStorage.setItem('metalBom.sizeTiles',JSON.stringify({sizes:[...selectedSizes],tiles:Object.fromEntries([...tilesBySize].map(([size,names])=>[size,[...names]]))})); };
   const values = id => $(id).value.trim();

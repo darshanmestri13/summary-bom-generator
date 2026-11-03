@@ -19,6 +19,7 @@
   const legacyTiles=load('metalBom.selectedTiles', []).flat().filter(name=>tiles.some(t=>t[0]===name));
   let selectedSizes=new Set((savedSizeTiles.sizes||legacySizes).filter(size=>sizeOptions.some(x=>x[0]===size)));
   let tilesBySize=new Map(sizeOptions.map(([size])=>[size,new Set((savedSizeTiles.tiles?.[size]|| (legacySizes.includes(size)?legacyTiles:[])).filter(name=>tiles.some(t=>t[0]===name)))]));
+  const sizeDetails=new Map();
   const persist = () => { localStorage.setItem('metalBom.tiles',JSON.stringify(tiles));localStorage.setItem('metalBom.types',JSON.stringify(types));localStorage.setItem('metalBom.sizeTiles',JSON.stringify({sizes:[...selectedSizes],tiles:Object.fromEntries([...tilesBySize].map(([size,names])=>[size,[...names]]))})); };
   const values = id => $(id).value.trim();
   const normalize = s => s.toUpperCase().replace(/\s+/g,'');
@@ -46,36 +47,53 @@
     $('variantSelectionCount').textContent=`${totalVariants} size and tile combination${totalVariants===1?'':'s'} selected`;
   }
   function childCount() { let n=parseInt($('childCount').value,10); if(!Number.isFinite(n)) n=1; n=Math.max(1,Math.min(30,n)); $('childCount').value=n; return n; }
+  function saveChildDetails() {
+    for(const card of $('childDetails').querySelectorAll('[data-size-details]')) {
+      const size=card.dataset.sizeDetails, countInput=card.querySelector('[data-size-count]');
+      const rows=[...card.querySelectorAll('tbody tr')].map(tr=>({component:tr.querySelector('select').value,values:[...tr.querySelectorAll('input')].map(input=>input.value)}));
+      sizeDetails.set(size,{count:Math.max(1,Math.min(30,parseInt(countInput.value,10)||1)),rows});
+    }
+  }
   function drawChildren() {
-    const n=childCount(), old=[...$('childRows').querySelectorAll('tr')].map(tr=>[...tr.querySelectorAll('input,select')].map(x=>x.value));
-    $('childRows').innerHTML=Array.from({length:n},(_,i)=>{
-      const d=old[i]||[i===0?'Tile':i===1?'Frame':'','','','','',''];
-      return `<tr><td class="num">${i+1}</td><td><select data-child="${i}" data-col="0"><option ${d[0]==='Tile'?'selected':''}>Tile</option><option ${d[0]==='Frame'?'selected':''}>Frame</option></select></td><td><input data-child="${i}" data-col="1" value="${esc(d[1])}" aria-label="Box ${i+1} packing dimensions"></td><td><input data-child="${i}" data-col="2" value="${esc(d[2])}" aria-label="Box ${i+1} product dimensions"></td><td><input type="number" step="0.01" data-child="${i}" data-col="3" value="${esc(d[3])}" aria-label="Box ${i+1} gross weight"></td><td><input type="number" step="0.01" data-child="${i}" data-col="4" value="${esc(d[4])}" aria-label="Box ${i+1} net weight"></td><td><input data-child="${i}" data-col="5" value="${esc(d[5])}" aria-label="Box ${i+1} SAP code child (Column N)"></td></tr>`;
-    }).join('');
+    saveChildDetails();
+    const sizes=sizeOptions.filter(([size])=>selectedSizes.has(size));
+    $('childDetails').innerHTML=sizes.length?sizes.map(([size,label])=>{
+      const detail=sizeDetails.get(size)||{count:childCount(),rows:[]};
+      sizeDetails.set(size,detail);
+      const count=Math.max(1,Math.min(30,parseInt(detail.count,10)||1));
+      const rows=Array.from({length:count},(_,i)=>{
+        const old=detail.rows[i]||{component:i===0?'Tile':'Frame',values:['','','','','']};
+        const d=old.values||[];
+        return `<tr><td class="num">${i+1}</td><td><select data-size-child="${esc(size)}"><option ${old.component==='Tile'?'selected':''}>Tile</option><option ${old.component==='Frame'?'selected':''}>Frame</option></select></td><td><input value="${esc(d[0])}" aria-label="${esc(label)} box ${i+1} packing dimensions"></td><td><input value="${esc(d[1])}" aria-label="${esc(label)} box ${i+1} product dimensions"></td><td><input type="number" step="0.01" value="${esc(d[2])}" aria-label="${esc(label)} box ${i+1} gross weight"></td><td><input type="number" step="0.01" value="${esc(d[3])}" aria-label="${esc(label)} box ${i+1} net weight"></td><td><input value="${esc(d[4])}" aria-label="${esc(label)} box ${i+1} SAP code child (Column N)"></td></tr>`;
+      }).join('');
+      return `<section class="size-details-card" data-size-details="${esc(size)}"><div class="size-details-head"><h3>${esc(label)} details</h3><div class="field"><label>Child boxes for ${esc(label)}</label><input type="number" min="1" max="30" data-size-count value="${count}" aria-label="${esc(label)} child count"></div></div><div class="table-wrap"><table class="children"><thead><tr><th>Box #</th><th>Component</th><th>Column I: Packing Dimensions (MM) (LXWXH)</th><th>Column J: Product Dimensions (MM) (LXWXH)</th><th>Column K: Gross Weight (KG)</th><th>Column L: Net Weight (KG)</th><th>Column N: SAP Code Child</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+    }).join(''):`<p class="empty">Select one or more sizes to enter their child details.</p>`;
     render();
   }
   function makeRows() {
-    const model=values('modelName'), modelId=model, type=values('productType'), code=typeCode(type), n=childCount(), plant=values('plant')||'MKA7';
+    const model=values('modelName'), modelId=model, type=values('productType'), code=typeCode(type), plant=values('plant')||'MKA7';
     const ready=model&&type&&code;
     if(!ready) return [];
     const typeSku=normalize(code);
-    const childRows=[...$('childRows').querySelectorAll('tr')].slice(0,n);
     const variants=sizeOptions.filter(([size])=>selectedSizes.has(size)).flatMap(([size])=>[...tilesBySize.get(size)].map(tile=>({size,tile})));
     if(!variants.length)return [];
     return variants.flatMap(({size,tile},variantIndex)=>{
+      const detail=sizeDetails.get(size)||{count:childCount(),rows:[]}, n=Math.max(1,Math.min(30,parseInt(detail.count,10)||1));
+      const childRows=detail.rows;
       const sizeLabel=size==='None'?'':size, base=`W${typeSku}${normalize(modelId)}${sizeCode(size)}`;
       const tCode=tileCode(tile), parent=`${base}${normalize(tCode)}`, parentName=`${model}${sizeLabel?` ${sizeLabel}`:''} ${type}-${tile}`;
-      const group=childRows.map((tr,i)=>{
-        const ins=[...tr.querySelectorAll('input')], component=tr.querySelector('select').value, isTile=component==='Tile';
+      const group=Array.from({length:n},(_,i)=>{
+        const child=childRows[i]||{component:i===0?'Tile':'Frame',values:['','','','','']}, ins=child.values, isTile=child.component==='Tile';
         const suffix=isTile?'T':'F', childBase=isTile?parent:base;
         const childCode=`${childBase}-B-${i+1}-${n}-${suffix}`;
         const childDesc=`${model}${sizeLabel?` ${sizeLabel}`:''} ${type}-${isTile?normalize(tCode)+'-':''}B-${i+1}-${n}-${suffix}`;
-        return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0].value,ins[1].value,ins[2].value,ins[3].value,'',ins[4].value,plant,(1/n).toFixed(2)];
+        return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0],ins[1],ins[2],ins[3],'',ins[4],plant,(1/n).toFixed(2)];
       });
       return variantIndex<variants.length-1?[...group,Array(16).fill('')]:group;
     });
   }
   function render() {
+    saveChildDetails();
     const rows=makeRows(), dataRows=rows.filter(row=>row.some(value=>value!=='')); $('rowCount').textContent=`${dataRows.length} ${dataRows.length===1?'row':'rows'}`;
     if(!rows.length){$('outputRows').innerHTML=`<tr><td class="empty" colspan="16">Enter a model name and product type, then choose each size and its tile variants in the left panel.</td></tr>`;return;}
     $('outputRows').innerHTML=rows.map(row=>row.every(value=>value==='')?'<tr class="group-gap"><td colspan="16"></td></tr>':`<tr>${row.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('');
@@ -122,14 +140,13 @@
   }
   $('outputHead').innerHTML=headings.map(h=>`<th>${esc(h)}</th>`).join('');
   drawCatalog(); drawChildren();
-  document.addEventListener('input',e=>{if(e.target.matches('[data-list]')){const a=e.target.dataset, arr=a.list==='tile'?tiles:types, old=arr[+a.i][+a.c];arr[+a.i][+a.c]=e.target.value;if(a.list==='tile'&&a.c==='0')for(const names of tilesBySize.values())if(names.has(old)){names.delete(old);names.add(e.target.value);}persist();updateSelectors();render();}else if(e.target.matches('[data-child]'))render();else if(['modelName','childCount','plant','revenueSegment'].includes(e.target.id)) {if(e.target.id==='childCount')drawChildren();else render();}});
-  document.addEventListener('change',e=>{if(e.target.matches('[data-size-select]')){const size=e.target.dataset.sizeSelect;if(e.target.checked)selectedSizes.add(size);else selectedSizes.delete(size);persist();updateSelectors();render();}else if(e.target.matches('[data-size-tile]')){const size=e.target.dataset.sizeTile,name=e.target.dataset.tileName,names=tilesBySize.get(size);if(e.target.checked)names.add(name);else names.delete(name);persist();updateSelectors();render();}else if(e.target.id==='productType'||e.target.matches('[data-child]'))render();});
+  document.addEventListener('input',e=>{if(e.target.matches('[data-list]')){const a=e.target.dataset, arr=a.list==='tile'?tiles:types, old=arr[+a.i][+a.c];arr[+a.i][+a.c]=e.target.value;if(a.list==='tile'&&a.c==='0')for(const names of tilesBySize.values())if(names.has(old)){names.delete(old);names.add(e.target.value);}persist();updateSelectors();render();}else if(e.target.matches('[data-size-count]'))drawChildren();else if(e.target.closest('[data-size-details]'))render();else if(['modelName','childCount','plant','revenueSegment'].includes(e.target.id)) {if(e.target.id==='childCount')drawChildren();else render();}});
+  document.addEventListener('change',e=>{if(e.target.matches('[data-size-select]')){const size=e.target.dataset.sizeSelect;if(e.target.checked)selectedSizes.add(size);else selectedSizes.delete(size);persist();updateSelectors();drawChildren();}else if(e.target.matches('[data-size-tile]')){const size=e.target.dataset.sizeTile,name=e.target.dataset.tileName,names=tilesBySize.get(size);if(e.target.checked)names.add(name);else names.delete(name);persist();updateSelectors();render();}else if(e.target.id==='productType'||e.target.closest('[data-size-details]'))render();});
   document.addEventListener('click',e=>{
     const rm=e.target.closest('[data-remove]'); if(rm){const a=rm.dataset,arr=a.remove==='tile'?tiles:types;if(a.remove==='tile'){const name=arr[+a.i][0];for(const names of tilesBySize.values())names.delete(name);}arr.splice(+a.i,1);persist();drawCatalog();render();}
   });
   $('addTile').addEventListener('click',()=>{tiles.push(['','']);persist();drawCatalog();$('tileRows').querySelector('tr:last-child input').focus();});
   $('addType').addEventListener('click',()=>{types.push(['','']);persist();drawCatalog();$('typeRows').querySelector('tr:last-child input').focus();});
-  $('addChild').addEventListener('click',()=>{const n=childCount();if(n>=30){$('status').textContent='The builder supports up to 30 child boxes.';return;}$('childCount').value=n+1;drawChildren();const last=$('childRows').lastElementChild;last?.scrollIntoView({block:'nearest'});});
   $('download').addEventListener('click',()=>{if(!makeRows().length){$('status').textContent='Complete the required product setup before downloading.';return;}const blob=createExcelWorkbook(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='summary-bom-generator.xlsx';a.click();URL.revokeObjectURL(url);$('status').textContent='Excel workbook downloaded.';});
   $('copy').addEventListener('click',async()=>{if(!makeRows().length){$('status').textContent='Complete the required product setup before copying.';return;}try{await navigator.clipboard.writeText(csvText());$('status').textContent='CSV copied to clipboard.';}catch{$('status').textContent='Clipboard access is unavailable. Use Download CSV.';}});
   ['modelName','productType','childCount','plant','revenueSegment'].forEach(id=>$(id).addEventListener('change',render));

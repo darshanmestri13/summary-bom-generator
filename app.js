@@ -70,7 +70,7 @@
         const suffix=isTile?'T':'F', childBase=isTile?parent:base;
         const childCode=`${childBase}-B-${i+1}-${n}-${suffix}`;
         const childDesc=`${model}${sizeLabel?` ${sizeLabel}`:''} ${type}-${isTile?normalize(tCode)+'-':''}B-${i+1}-${n}-${suffix}`;
-        return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0].value,ins[1].value,ins[2].value,ins[3].value,'',ins[5].value,plant,(1/n).toFixed(2)];
+        return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0].value,ins[1].value,ins[2].value,ins[3].value,'',ins[4].value,plant,(1/n).toFixed(2)];
       });
       return variantIndex<variants.length-1?[...group,Array(16).fill('')]:group;
     });

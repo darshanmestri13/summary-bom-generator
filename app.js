@@ -51,22 +51,23 @@
     for(const card of $('childDetails').querySelectorAll('[data-size-details]')) {
       const size=card.dataset.sizeDetails, countInput=card.querySelector('[data-size-count]');
       const rows=[...card.querySelectorAll('tbody tr')].map(tr=>({component:tr.querySelector('select').value,values:[...tr.querySelectorAll('input')].map(input=>input.value)}));
-      sizeDetails.set(size,{count:Math.max(1,Math.min(30,parseInt(countInput.value,10)||1)),rows});
+      const productDimensions=card.querySelector('[data-size-product-dimensions]').value;
+      sizeDetails.set(size,{count:Math.max(1,Math.min(30,parseInt(countInput.value,10)||1)),productDimensions,rows});
     }
   }
   function drawChildren() {
     saveChildDetails();
     const sizes=sizeOptions.filter(([size])=>selectedSizes.has(size));
     $('childDetails').innerHTML=sizes.length?sizes.map(([size,label])=>{
-      const detail=sizeDetails.get(size)||{count:childCount(),rows:[]};
+      const detail=sizeDetails.get(size)||{count:childCount(),productDimensions:'',rows:[]};
       sizeDetails.set(size,detail);
       const count=Math.max(1,Math.min(30,parseInt(detail.count,10)||1));
       const rows=Array.from({length:count},(_,i)=>{
         const old=detail.rows[i]||{component:i===0?'Tile':'Frame',values:['','','','','']};
         const d=old.values||[];
-        return `<tr><td class="num">${i+1}</td><td><select data-size-child="${esc(size)}"><option ${old.component==='Tile'?'selected':''}>Tile</option><option ${old.component==='Frame'?'selected':''}>Frame</option></select></td><td><input value="${esc(d[0])}" aria-label="${esc(label)} box ${i+1} packing dimensions"></td><td><input value="${esc(d[1])}" aria-label="${esc(label)} box ${i+1} product dimensions"></td><td><input type="number" step="0.01" value="${esc(d[2])}" aria-label="${esc(label)} box ${i+1} gross weight"></td><td><input type="number" step="0.01" value="${esc(d[3])}" aria-label="${esc(label)} box ${i+1} net weight"></td><td><input value="${esc(d[4])}" aria-label="${esc(label)} box ${i+1} SAP code child (Column N)"></td></tr>`;
+        return `<tr><td class="num">${i+1}</td><td><select data-size-child="${esc(size)}"><option ${old.component==='Tile'?'selected':''}>Tile</option><option ${old.component==='Frame'?'selected':''}>Frame</option></select></td><td><input value="${esc(d[0])}" aria-label="${esc(label)} box ${i+1} packing dimensions"></td><td><input type="number" step="0.01" value="${esc(d[1])}" aria-label="${esc(label)} box ${i+1} gross weight"></td><td><input type="number" step="0.01" value="${esc(d[2])}" aria-label="${esc(label)} box ${i+1} net weight"></td><td><input value="${esc(d[3])}" aria-label="${esc(label)} box ${i+1} SAP code child (Column N)"></td></tr>`;
       }).join('');
-      return `<section class="size-details-card" data-size-details="${esc(size)}"><div class="size-details-head"><h3>${esc(label)} details</h3><div class="field"><label>Child boxes for ${esc(label)}</label><input type="number" min="1" max="30" data-size-count value="${count}" aria-label="${esc(label)} child count"></div></div><div class="table-wrap"><table class="children"><thead><tr><th>Box #</th><th>Component</th><th>Column I: Packing Dimensions (MM) (LXWXH)</th><th>Column J: Product Dimensions (MM) (LXWXH)</th><th>Column K: Gross Weight (KG)</th><th>Column L: Net Weight (KG)</th><th>Column N: SAP Code Child</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+      return `<section class="size-details-card" data-size-details="${esc(size)}"><div class="size-details-head"><h3>${esc(label)} details</h3><div class="field"><label>Child boxes for ${esc(label)}</label><input type="number" min="1" max="30" data-size-count value="${count}" aria-label="${esc(label)} child count"></div></div><div class="field" style="max-width:360px;margin-bottom:12px"><label>Column J: Product Dimensions (MM) (LXWXH) — shared across ${esc(label)} child rows</label><input data-size-product-dimensions value="${esc(detail.productDimensions||'')}" aria-label="${esc(label)} shared product dimensions"></div><div class="table-wrap"><table class="children"><thead><tr><th>Box #</th><th>Component</th><th>Column I: Packing Dimensions (MM) (LXWXH)</th><th>Column K: Gross Weight (KG)</th><th>Column L: Net Weight (KG)</th><th>Column N: SAP Code Child</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
     }).join(''):`<p class="empty">Select one or more sizes to enter their child details.</p>`;
     render();
   }
@@ -78,7 +79,7 @@
     const variants=sizeOptions.filter(([size])=>selectedSizes.has(size)).flatMap(([size])=>[...tilesBySize.get(size)].map(tile=>({size,tile})));
     if(!variants.length)return [];
     return variants.flatMap(({size,tile},variantIndex)=>{
-      const detail=sizeDetails.get(size)||{count:childCount(),rows:[]}, n=Math.max(1,Math.min(30,parseInt(detail.count,10)||1));
+      const detail=sizeDetails.get(size)||{count:childCount(),productDimensions:'',rows:[]}, n=Math.max(1,Math.min(30,parseInt(detail.count,10)||1));
       const childRows=detail.rows;
       const sizeLabel=size==='None'?'':size, base=`W${typeSku}${normalize(modelId)}${sizeCode(size)}`;
       const tCode=tileCode(tile), parent=`${base}${normalize(tCode)}`, parentName=`${model}${sizeLabel?` ${sizeLabel}`:''} ${type}-${tile}`;
@@ -87,16 +88,36 @@
         const suffix=isTile?'T':'F', childBase=isTile?parent:base;
         const childCode=`${childBase}-B-${i+1}-${n}-${suffix}`;
         const childDesc=`${model}${sizeLabel?` ${sizeLabel}`:''} ${type}-${isTile?normalize(tCode)+'-':''}B-${i+1}-${n}-${suffix}`;
-        return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0],ins[1],ins[2],ins[3],'',ins[4],plant,(1/n).toFixed(2)];
+        return [type,values('revenueSegment')||'Fabrication (MKA7)',parent,parentName,String(parentName.length),childCode,childDesc,String(childDesc.length),ins[0],detail.productDimensions||'',ins[1],ins[2],'',ins[3],plant,(1/n).toFixed(2)];
       });
-      return variantIndex<variants.length-1?[...group,Array(16).fill('')]:group;
+      group.forEach(row=>row._size=size);
+      if(variantIndex<variants.length-1){const gap=Array(16).fill('');gap._size=size;return [...group,gap];}
+      return group;
     });
+  }
+  function getSizeSpans(rows) {
+    const spans=[];
+    rows.forEach((row,index)=>{
+      const size=row._size??'';
+      const last=spans[spans.length-1];
+      if(!last||last.size!==size)spans.push({size,start:index,end:index});
+      else last.end=index;
+    });
+    return spans;
   }
   function render() {
     saveChildDetails();
     const rows=makeRows(), dataRows=rows.filter(row=>row.some(value=>value!=='')); $('rowCount').textContent=`${dataRows.length} ${dataRows.length===1?'row':'rows'}`;
     if(!rows.length){$('outputRows').innerHTML=`<tr><td class="empty" colspan="16">Enter a model name and product type, then choose each size and its tile variants in the left panel.</td></tr>`;return;}
-    $('outputRows').innerHTML=rows.map(row=>row.every(value=>value==='')?'<tr class="group-gap"><td colspan="16"></td></tr>':`<tr>${row.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('');
+    const spans=getSizeSpans(rows), spanAt=index=>spans.find(span=>span.start===index), containing=index=>spans.find(span=>span.start<=index&&span.end>=index);
+    $('outputRows').innerHTML=rows.map((row,index)=>{
+      const start=spanAt(index), span=containing(index), mergedColumn=9;
+      const cells=row.map((value,col)=>{
+        if(col===mergedColumn){if(!start)return '';return `<td rowspan="${span.end-span.start+1}">${esc(value)}</td>`;}
+        return `<td>${esc(value)}</td>`;
+      }).join('');
+      return `<tr${row.every(value=>value==='')?' class="group-gap"':''}>${cells}</tr>`;
+    }).join('');
   }
   function csvText(){const rows=makeRows().map((row,i)=>{if(row.some(value=>value!=='')){row[4]=`=LEN(D${i+2})`;row[7]=`=LEN(G${i+2})`;}return row;});return [headings,...rows].map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');}
   function createExcelWorkbook(){
@@ -105,10 +126,17 @@
     const widths=[20,24,26,38,18,34,38,18,30,30,18,18,20,20,14,18];
     const cols=widths.map((width,i)=>`<col min="${i+1}" max="${i+1}" width="${width}" customWidth="1"/>`).join('');
     const rows=[headings,...makeRows()];
+    const mergedJRows=new Set(),mergeRanges=[];
+    for(const span of getSizeSpans(rows.slice(1))){
+      const first=span.start+2,last=span.end+2;
+      if(last>first){mergeRanges.push(`<mergeCell ref="J${first}:J${last}"/>`);for(let row=first+1;row<=last;row++)mergedJRows.add(row);}
+    }
+    const mergeXml=mergeRanges.length?`<mergeCells count="${mergeRanges.length}">${mergeRanges.join('')}</mergeCells>`:'';
     const sheetRows=rows.map((row,rowIndex)=>{
       const r=rowIndex+1;
       if(rowIndex>0&&row.every(value=>value===''))return `<row r="${r}"/>`;
       const cells=row.map((value,colIndex)=>{
+        if(colIndex===9&&mergedJRows.has(r))return '';
         const ref=`${colName(colIndex)}${r}`,style=rowIndex===0?' s="1"':colIndex===15?' s="2"':'';
         if(rowIndex>0&&(colIndex===4||colIndex===7))return `<c r="${ref}"${style}><f>LEN(${colName(colIndex-1)}${r})</f><v>${Number(value)||0}</v></c>`;
         if(rowIndex>0&&[10,11,15].includes(colIndex)&&value!==''&&Number.isFinite(Number(value)))return `<c r="${ref}"${style}><v>${Number(value)}</v></c>`;
@@ -122,7 +150,7 @@
       'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="BOM Summary" sheetId="1" r:id="rId1"/></sheets></workbook>',
       'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
       'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="0.00"/></numFmts><fonts count="2"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
-      'xl/worksheets/sheet1.xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:P${rows.length}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${cols}</cols><sheetData>${sheetRows}</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>`
+      'xl/worksheets/sheet1.xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:P${rows.length}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${cols}</cols><sheetData>${sheetRows}</sheetData>${mergeXml}<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>`
     };
     const encoder=new TextEncoder(),u16=(view,offset,value)=>view.setUint16(offset,value,true),u32=(view,offset,value)=>view.setUint32(offset,value>>>0,true);
     const crc32=data=>{let crc=0xffffffff;for(const byte of data){crc^=byte;for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return (crc^0xffffffff)>>>0;};

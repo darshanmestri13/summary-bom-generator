@@ -1,4 +1,5 @@
 (() => {
+  const tileConfigUrl=new URL('Backend/tile-variants.json',new URL('.',document.currentScript.src));
   const headers=['Product type','Revenue Segment','Parent SKU Code','Parent Product Name','Characters Length (40 Characters)','Child SKU Code','Child Description','Characters Length (40 Characters)','Packing Dimensions (MM) (LXWXH)','Product Dimensions (MM) (LXWXH)','Gross Weight (KG)','Net Weight (KG)','SAP Code Parent','SAP Code Child','Plant','Conversion Factor'];
   const productCodes=new Map([['coffee table','MCFT'],['dining table','MDINE'],['side table','MST'],['study table','ST'],['metal bed','MTB']]);
   const defaultTileCodes=[['Amphora White','AMW'],['Alaska White','ALW'],['Antaliya Beige','AB'],['Breccia Natural','BRN'],['Colonial Black','COB'],['Fragment White','FW'],['Fossil Black','FOB'],['Golden Statuario','GLDST'],['Omani Grey','OMG'],['Portoro Black','PRTB'],['Simless White','SW'],['Versace Aloud','VA'],['Vibranium Brown','VRB'],['Volga Blue','VOB']];
@@ -9,10 +10,10 @@
 
   async function loadTileVariants(){
     try{
-      const response=await fetch('Backend/tile-variants.json',{cache:'no-store'});if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const response=await fetch(tileConfigUrl,{cache:'no-store'});if(!response.ok)throw new Error(`HTTP ${response.status}`);
       const entries=await response.json();if(!Array.isArray(entries))throw new Error('Invalid JSON array');
       const parsed=new Map();for(const entry of entries){const name=String(entry?.name??'').trim(),shortForm=String(entry?.shortForm??'').trim().toUpperCase().replace(/\s+/g,'');if(!name||!/^[A-Z0-9]+$/.test(shortForm))throw new Error('Each entry needs a name and an alphanumeric shortForm');if([...parsed.keys()].some(existing=>normalized(existing)===normalized(name)))throw new Error(`Duplicate tile name: ${name}`);if([...parsed.values()].includes(shortForm))throw new Error(`Duplicate tile short form: ${shortForm}`);parsed.set(name,shortForm);}
-      if(!parsed.size)throw new Error('The tile variant file is empty');const signature=JSON.stringify([...parsed.entries()]);if(signature===tileSignature)return false;tileCodes.clear();for(const [name,shortForm] of parsed)tileCodes.set(name,shortForm);tileSignature=signature;return true;
+      if(!parsed.size)throw new Error('The tile variant file is empty');const signature=JSON.stringify([...parsed.entries()]);if(signature===tileSignature){if($('status').textContent.startsWith('Could not load Backend/'))$('status').textContent='';return false;}tileCodes.clear();for(const [name,shortForm] of parsed)tileCodes.set(name,shortForm);tileSignature=signature;if($('status').textContent.startsWith('Could not load Backend/'))$('status').textContent='';return true;
     }catch(error){if(!tileCodes.size){for(const [name,shortForm] of defaultTileCodes)tileCodes.set(name,shortForm);tileSignature=JSON.stringify([...tileCodes.entries()]);$('status').textContent='Could not load Backend/tile-variants.json. Check that the tile file contains valid JSON and reload the page.';}return false;}
   }
 
